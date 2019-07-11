@@ -90,7 +90,7 @@ namespace SerahToolkit_SharpGL.FF8_Core
                 _mClips[nClips].Resolutions[0].Offset = (uint)fs.Position-4;
                 _mClips[nClips].Resolutions[0].Size = br.ReadUInt32();
                 _mClips[nClips].Frames = br.ReadUInt32();
-                _mClips[nClips].Resolutions[0].Size += 8;
+                _mClips[nClips].Resolutions[0].Size += 8; // why?
 
                 //START OF BIK 2
                 //header = br.ReadUInt32() & _3B_MASK;
