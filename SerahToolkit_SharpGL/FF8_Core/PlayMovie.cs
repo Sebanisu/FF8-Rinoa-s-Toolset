@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows.Forms;
@@ -32,45 +33,79 @@ namespace SerahToolkit_SharpGL.FF8_Core
                 _mClips[i].Resolutions = new Resolutions[2];
         }
 
+        bool ValidVersion(bool biktype2,byte version)
+        {
+            if (!biktype2)
+                return
+                    version == 0x62 ||
+                    version == 0x64 ||
+                    version == 0x66 ||
+                    version == 0x67 ||
+                    version == 0x68 ||
+                    version == 0x69;
+            return
+                version == 0x61 ||
+                version == 0x64 ||
+                version == 0x66 ||
+                version == 0x67 ||
+                version == 0x68 ||
+                version == 0x69;
+        }
         public void Read()
         {
-            if(path == null)
+            if (path == null)
                 return;
+            const int _3B_MASK = 0xFFFFFF;
+            const int F8P = 0x503846;
+            const int BIK = 0x4B4942;
+            const int KB2 = 0X32424B; // BIK version 2.
             FileStream fs = new FileStream(path, FileMode.Open,FileAccess.Read);
             BinaryReader br = new BinaryReader(fs);
 
-            uint n = 0;
             uint len = (uint)fs.Length;
             nClips = 0;
-            while (n < len)
+            while (fs.Position < len)
             {
-                fs.Seek(n, SeekOrigin.Begin);
-                uint header = br.ReadUInt32() & 0xFFFFFF;
-                if (header != 0x503846)
-                    return;
+                //START OF CAM
+                uint header = br.ReadUInt32() & _3B_MASK; // are first 3 bytes F8P
+                Debug.Assert(header == F8P);
                 fs.Seek(2, SeekOrigin.Current);
                 _mClips[nClips].Frames = br.ReadUInt16();
-                n += 8;
-                fs.Seek(n+8, SeekOrigin.Begin);
-                fs.Seek(_mClips[nClips].Frames*0x2C+(0x2C-8), SeekOrigin.Current);
-                header = br.ReadUInt32() & 0xFFFFFF;
-                if (header != 0x4B4942)
-                    return;
+                fs.Seek((_mClips[nClips].Frames+1)*0x2C, SeekOrigin.Current);
+                while (br.ReadByte() == 0xFF)
+                {
+                    fs.Seek(0x2B, SeekOrigin.Current);
+                }
+                fs.Seek(-1, SeekOrigin.Current);
+                //START OF BIK 1
+                byte[] tmp = br.ReadBytes(4);
+                header = (uint)(tmp[2] << 16 | tmp[1] << 8 | tmp[0]);
+                byte version = tmp[3];
+                Debug.Assert(header == KB2 || header == BIK);
+                Debug.Assert(ValidVersion(header == KB2, version));
+                //header = br.ReadUInt32() & _3B_MASK;
+                //if (header != BIK)
+                //    return;
 
                 _mClips[nClips].Resolutions[0].Offset = (uint)fs.Position-4;
                 _mClips[nClips].Resolutions[0].Size = br.ReadUInt32();
                 _mClips[nClips].Frames = br.ReadUInt32();
                 _mClips[nClips].Resolutions[0].Size += 8;
-                n = _mClips[nClips].Resolutions[0].Size + _mClips[nClips].Resolutions[0].Offset;
 
-                fs.Seek(n, SeekOrigin.Begin);
-                header = br.ReadUInt32() & 0xFFFFFF;
-                if(header != 0x4B4942)
-                    return;
-                _mClips[nClips].Resolutions[1].Offset = _mClips[nClips].Resolutions[0].Offset + _mClips[nClips].Resolutions[0].Size;
+                //START OF BIK 2
+                //header = br.ReadUInt32() & _3B_MASK;
+                fs.Seek(_mClips[nClips].Resolutions[0].Size -12, SeekOrigin.Current);
+                tmp = br.ReadBytes(4);
+                header = (uint)(tmp[2] << 16 | tmp[1] << 8 | tmp[0]);
+                version = tmp[3];
+                Debug.Assert(header == KB2 || header == BIK);
+                Debug.Assert(ValidVersion(header == KB2, version));
+                _mClips[nClips].Resolutions[1].Offset = (uint)fs.Position - 4;
                 _mClips[nClips].Resolutions[1].Size = br.ReadUInt32();
                 _mClips[nClips].Resolutions[1].Size += 8;
-                n += _mClips[nClips].Resolutions[1].Size;
+
+                //NEXT VIDEO
+                fs.Seek(_mClips[nClips].Resolutions[1].Size - 8, SeekOrigin.Current);
                 nClips++;
             }
             bSuccess = true;
