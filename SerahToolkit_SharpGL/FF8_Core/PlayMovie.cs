@@ -51,6 +51,10 @@ namespace SerahToolkit_SharpGL.FF8_Core
                 version == 0x68 ||
                 version == 0x69;
         }
+        /// <summary>
+        /// Read Locations of Videos from PAK file
+        /// </summary>
+        /// <see cref="https://wiki.multimedia.cx/index.php/Bink_Container"/>
         public void Read()
         {
             if (path == null)
