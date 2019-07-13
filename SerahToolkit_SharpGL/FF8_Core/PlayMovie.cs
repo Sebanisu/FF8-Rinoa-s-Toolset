@@ -28,8 +28,9 @@ namespace SerahToolkit_SharpGL.FF8_Core
         public PlayMovie(string path)
         {
             this.path = path;
-            _mClips = new MovieClip[256];
-            for (int i = 0; i != 255; i++)
+            const int maxClips = 256;
+            _mClips = new MovieClip[maxClips];
+            for (int i = 0; i < maxClips; i++)
                 _mClips[i].Resolutions = new Resolutions[2];
         }
 
@@ -66,9 +67,8 @@ namespace SerahToolkit_SharpGL.FF8_Core
             FileStream fs = new FileStream(path, FileMode.Open,FileAccess.Read);
             BinaryReader br = new BinaryReader(fs);
 
-            uint len = (uint)fs.Length;
             nClips = 0;
-            while (fs.Position < len)
+            while (fs.Position < fs.Length)
             {
                 //START OF CAM
                 uint header = br.ReadUInt32() & _3B_MASK; // are first 3 bytes F8P
